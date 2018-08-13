@@ -23,7 +23,7 @@ class App extends Component {
     const { actions, routeParams, route, location, embed } = this.props
     const theme = routeParams.theme || 'default'
     var header = ""
-    if (embed && this.props.view === "compare")
+    if (embed && route.view === "compare")
       header = <EmbedHeader layers={this.state.layers || []} {...actions} theme={theme}/>
     else if (!embed)
       header = <Header/>
