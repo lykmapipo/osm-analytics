@@ -93,10 +93,10 @@ export default {
         "line-color": blue
       },
       "aggregated": {
-        "line-color": blue
+        "fill-color": blue
       },
       "aggregated-highlight": {
-        "line-color": blue
+        "fill-color": orange
       }
     },
     waterways: {
@@ -107,18 +107,18 @@ export default {
         "line-color": blue
       },
       "aggregated": {
-        "line-color": blue
+        "fill-color": blue
       },
       "aggregated-highlight": {
-        "line-color": blue
+        "fill-color": orange
       }
     },
     builtup: {
       "aggregated": {
-        "line-color": '#666'
+        "fill-color": '#666'
       },
       "aggregated-highlight": {
-        "line-color": '#666'
+        "fill-color": '#666'
       }
     }
   }
