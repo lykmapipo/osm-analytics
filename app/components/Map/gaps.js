@@ -211,14 +211,17 @@ class GapsMap extends Component {
   mapSetRegion(region, isEditable, fitBoundsWithBottomPadding) {
     const { swiper: { poly } } = themes[this.props.theme]
 
-    if (boundsLayer !== null) {
+    if (boundsLayer !== null && region === null) {
       map.removeLayer(boundsLayer)
+      return
     }
-    if (region === null) return
     regionToCoords(region, 'leaflet')
     .then(function(region) {
       let coords = region.geometry.coordinates
 
+      if (boundsLayer !== null) {
+        map.removeLayer(boundsLayer)
+      }
       boundsLayer = L[poly.shape](
         [[[-85.0511287798,-1E5],[85.0511287798,-1E5],[85.0511287798,2E5],[-85.0511287798,2E5],[-85.0511287798,-1E5]]]
         .concat(coords), {
