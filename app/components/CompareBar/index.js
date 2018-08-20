@@ -106,7 +106,7 @@ class CompareBar extends Component {
       filters.forEach(filter => {
         featureCounts[filter] = []
         timeOptions.forEach((timeOption, timeIdx) => {
-          if (timeOption.except && timeOption.except.indexOf(filter) >= 0) return
+          if (timeOption.layers && timeOption.layers.indexOf(filter) == -1) return
           q.defer(function(region, filter, time, callback) {
             searchFeatures(region, filter, time, function(err, data) {
               if (err) callback(err)
