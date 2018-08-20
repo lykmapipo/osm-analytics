@@ -113,6 +113,7 @@ class Map extends Component {
     } else if (this.props.map.view === 'compare') {
       glCompareLayers.before.addTo(map)
       glCompareLayers.after.addTo(map)
+      this.swiperMoved(window.innerWidth/2)
     }
 
     // init from route params
