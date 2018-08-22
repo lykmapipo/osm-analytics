@@ -60,7 +60,7 @@ class ContributorsModal extends Component {
     var uidsToRequest = uids.filter(uid => !this.userNames[uid])
 
     uidsToRequest.forEach(uid => {
-      let req = request.get('//api.openstreetmap.org/api/0.6/user/'+uid)
+      let req = request.get('https://api.openstreetmap.org/api/0.6/user/'+uid)
       q.defer(req.end.bind(req))
     })
     q.awaitAll(function(err, data) {
