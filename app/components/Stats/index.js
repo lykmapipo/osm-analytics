@@ -49,6 +49,23 @@ class Stats extends Component {
     updating: false
   }
 
+  applySelection(timestamp, userExperience, selection) {
+    if (!Array.isArray(timestamp)) {
+      timestamp = [timestamp, timestamp]
+    }
+    if (!Array.isArray(userExperience)) {
+      userExperience = [userExperience, userExperience]
+    }
+    return (
+      (selection.timeFilter === null || (
+        timestamp[1] >= selection.timeFilter[0] && timestamp[0] <= selection.timeFilter[1]
+      )) &&
+      (selection.experienceFilter === null || (
+        userExperience[1] >= selection.experienceFilter[0] && userExperience[0] <= selection.experienceFilter[1]
+      ))
+    )
+  }
+
   render() {
     var features = this.state.features
     const activeLayer = this.props.layers.find(layer => layer.name === this.props.map.filters[0])
@@ -56,45 +73,63 @@ class Stats extends Component {
     // apply time and experience filters
     features.forEach(filter => {
       // do not override!
-      filter.highlightedFeatures = filter.features.filter(feature =>
-        this.props.stats.timeFilter === null
-        || (
-          feature.properties._timestamp >= this.props.stats.timeFilter[0]
-          && feature.properties._timestamp <= this.props.stats.timeFilter[1]
-        )
-        || (
-          feature.properties._timestampMax >= this.props.stats.timeFilter[0]
-          && feature.properties._timestampMin <= this.props.stats.timeFilter[1]
-        )
-      ).filter(feature =>
-        this.props.stats.experienceFilter === null
-        || (
-          feature.properties._userExperience >= this.props.stats.experienceFilter[0]
-          && feature.properties._userExperience <= this.props.stats.experienceFilter[1]
-        )
-        || (
-          feature.properties._userExperienceMax >= this.props.stats.experienceFilter[0]
-          && feature.properties._userExperienceMin <= this.props.stats.experienceFilter[1]
-        )
-      )
+      filter.highlightedFeatures = filter.features.filter(feature => {
+        if (feature.properties._timestamp) {
+          return this.applySelection(
+            feature.properties._timestamp,
+            feature.properties._userExperience,
+            this.props.stats
+          )
+        } else {
+          return this.applySelection(
+            [feature.properties._timestampMin, feature.properties._timestampMax],
+            [feature.properties._userExperienceMin, feature.properties._userExperienceMax],
+            this.props.stats
+          )
+        }
+      })
     })
 
     // calculate number of contributors
     var contributors = {}
+    var sampledContributorCounts = false
+    var featureCount = 0
     features.forEach(filter => {
-      filter.highlightedFeatures.forEach(f => {
-        contributors[f.properties._uid] = (contributors[f.properties._uid] || 0) + 1
-      })
+      if (filter.features.length > 0 && filter.features[0].properties.tile.z < 13) {
+        // on the low zoom levels we don't have complete data, but only samples.
+        // estimating the total contributor count number from a sample is tricky.
+        // for now just display a lower limit (e.g. "432+" contributors)
+        // todo: maybe a Good-Turing estimation could be used here? see https://en.wikipedia.org/wiki/Good%E2%80%93Turing_frequency_estimation
+        sampledContributorCounts = true
+        filter.features.forEach(f => {
+          var timestamps = f.properties._timestamps.split(";").map(Number)
+          var userExperiences = f.properties._userExperiences.split(";").map(Number)
+          var uids = f.properties._uids.split(";").map(Number)
+          var matchingSamples = 0
+          for (var i=0; i<timestamps.length; i++) {
+            let sampleTimestamp = timestamps[i]
+            let sampleUserExperience = userExperiences[i]
+            if (this.applySelection(sampleTimestamp, sampleUserExperience, this.props.stats)) {
+              contributors[uids[i]] = (contributors[uids[i]] || 0) + 1
+              matchingSamples++
+            }
+          }
+          // from samples: scale matching data samples to total number of features in respective bin
+          featureCount += f.properties._count * matchingSamples / Math.min(16, f.properties._count)
+        })
+      } else {
+        filter.highlightedFeatures.forEach(f => {
+          contributors[f.properties._uid] = (contributors[f.properties._uid] || 0) + 1
+          featureCount++
+        })
+      }
     })
     contributors = Object.keys(contributors).map(uid => ({
       uid: uid,
       contributions: contributors[uid]
     })).sort((a,b) => b.contributions - a.contributions)
     var numContributors = contributors.length
-    if (numContributors === 1 && contributors[0].uid === "undefined") {
-      // on the low zoom levels we don't have complete data, and estimating this number from a sample is tricky. maybe Good-Turing estimation could be used here? see https://en.wikipedia.org/wiki/Good%E2%80%93Turing_frequency_estimation
-      numContributors = null
-    }
+    featureCount = Math.round(featureCount)
 
     var timeFilter = ''
     if (this.props.stats.timeFilter) {
@@ -118,8 +153,8 @@ class Stats extends Component {
                 ? unitSystems[this.props.stats.unitSystem].distance.convert(
                   filter.highlightedFeatures.reduce((prev, feature) => prev+(feature.properties._length || 0.0), 0.0)
                 )
-                : filter.highlightedFeatures.reduce((prev, feature) => prev+(feature.properties._count || 1), 0))
-              ).toFixed(0))
+                : featureCount //filter.highlightedFeatures.reduce((prev, feature) => prev+(feature.properties._count || 1), 0))
+              )).toFixed(0))
             }</span><br/>
             {filter.filter === 'highways' || filter.filter === 'waterways'
             ? <UnitSelector
@@ -139,10 +174,9 @@ class Stats extends Component {
             }</span><br/><span className="descriptor">HOT Projects</span>
           </li>
           <li>
-            <span className="number">{!numContributors
-            ? numContributors === 0 ? '0' : <span title='select a smaller region (~city level) to see the exact number of contributors and get a list of the top contributors in that region'>many</span>
-            : <a className="link" onClick={::this.openContributorsModal} target="_blank">{numberWithCommas(numContributors)}</a>
-            }</span><br/><span className="descriptor">Contributors</span>
+            <span className="number">
+              <a title={sampledContributorCounts ? "add select a smaller region (~city level) to see the exact number of contributors" : ""} className="link" onClick={::this.openContributorsModal} target="_blank">{numberWithCommas(numContributors) + (sampledContributorCounts ? "+" : "")}</a>
+            </span><br/><span className="descriptor">Contributors</span>
           </li>
         </ul>
 
