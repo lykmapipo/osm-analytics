@@ -157,16 +157,17 @@ class Stats extends Component {
             {timeFilter}
           </li>
         {features.map(filter => {
+          const isLinearFeatureLayer = this.props.layers.find(layer => layer.name === filter.filter).filter.geometry === "LineString"
           return (<li key={activeLayer.name} title={activeLayer.description}>
             <span className="number">{
-              numberWithCommas(Number((filter.filter === 'highways' || filter.filter === 'waterways'
+              numberWithCommas(Number((isLinearFeatureLayer
                 ? unitSystems[this.props.stats.unitSystem].distance.convert(
                   filter.highlightedFeatures.reduce((prev, feature) => prev+(feature.properties._length || 0.0), 0.0)
                 )
                 : featureCount //filter.highlightedFeatures.reduce((prev, feature) => prev+(feature.properties._count || 1), 0))
               )).toFixed(0))
             }</span><br/>
-            {filter.filter === 'highways' || filter.filter === 'waterways'
+            {isLinearFeatureLayer
             ? <UnitSelector
                 unitSystem={this.props.stats.unitSystem}
                 unit='distance'
@@ -216,7 +217,7 @@ class Stats extends Component {
           isOpen={this.state.subTagsModalOpen}
           onRequestClose={::this.closeSubTagsModal}
           style={modalStyles}
-          tagKey = {features.length > 0 && this.props.layers.find(f => f.name === features[0].filter).filter.tagKey}
+          tagKey = {features.length > 0 && this.props.layers.find(layer => layer.name === features[0].filter).filter.tagKey}
           subTags={subTags}
         />
 
