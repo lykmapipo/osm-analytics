@@ -11,6 +11,7 @@ import OverlayButton from '../OverlayButton'
 import UnitSelector from '../UnitSelector'
 import Histogram from './chart'
 import ContributorsModal from './contributorsModal'
+import SubTagsModal from './subTagsModal'
 import HotProjectsModal from './hotProjectsModal'
 import regionToCoords from '../Map/regionToCoords'
 import searchHotProjectsInRegion from './searchHotProjects'
@@ -32,7 +33,7 @@ const modalStyles = {
     transform: 'translate(-50%, -50%)',
     maxHeight: '350px',
     maxWidth: '512px',
-    minWidth: '256px',
+    minWidth: '300px',
     borderRadius: '4px',
     paddingTop: '25px',
     paddingBottom: '35px',
@@ -92,6 +93,7 @@ class Stats extends Component {
 
     // calculate number of contributors
     var contributors = {}
+    var subTags = {}
     var sampledContributorCounts = false
     var featureCount = 0
     features.forEach(filter => {
@@ -105,12 +107,14 @@ class Stats extends Component {
           var timestamps = f.properties._timestamps.split(";").map(Number)
           var userExperiences = f.properties._userExperiences.split(";").map(Number)
           var uids = f.properties._uids.split(";").map(Number)
+          var tagValues = f.properties._tagValues.split(";")
           var matchingSamples = 0
           for (var i=0; i<timestamps.length; i++) {
             let sampleTimestamp = timestamps[i]
             let sampleUserExperience = userExperiences[i]
             if (this.applySelection(sampleTimestamp, sampleUserExperience, this.props.stats)) {
               contributors[uids[i]] = (contributors[uids[i]] || 0) + 1
+              subTags[tagValues[i]] = (subTags[tagValues[i]] || 0) + 1
               matchingSamples++
             }
           }
@@ -120,6 +124,7 @@ class Stats extends Component {
       } else {
         filter.highlightedFeatures.forEach(f => {
           contributors[f.properties._uid] = (contributors[f.properties._uid] || 0) + 1
+          subTags[f.properties._tagValue] = (subTags[f.properties._tagValue] || 0) + 1
           featureCount++
         })
       }
@@ -129,6 +134,11 @@ class Stats extends Component {
       contributions: contributors[uid]
     })).sort((a,b) => b.contributions - a.contributions)
     var numContributors = contributors.length
+    subTags = Object.keys(subTags).map(subTag => ({
+      subTag: subTag,
+      count: subTags[subTag]
+    })).sort((a,b) => b.count - a.count)
+    var numSubTags = subTags.length
     featureCount = Math.round(featureCount)
 
     var timeFilter = ''
@@ -175,8 +185,13 @@ class Stats extends Component {
           </li>
           <li>
             <span className="number">
-              <a title={sampledContributorCounts ? "add select a smaller region (~city level) to see the exact number of contributors" : ""} className="link" onClick={::this.openContributorsModal} target="_blank">{numberWithCommas(numContributors) + (sampledContributorCounts ? "+" : "")}</a>
+              <a title={sampledContributorCounts ? "select a smaller region (~city level) to see the exact number of contributors" : ""} className="link" onClick={::this.openContributorsModal} target="_blank">{numberWithCommas(numContributors) + (sampledContributorCounts ? "+" : "")}</a>
             </span><br/><span className="descriptor">Contributors</span>
+          </li>
+          <li>
+            <span className="number">
+              <a title={sampledContributorCounts ? "select a smaller region (~city level) to see the exact number of sub-tags" : ""} className="link" onClick={::this.openSubTagsModal} target="_blank">{numberWithCommas(numSubTags) + (sampledContributorCounts ? "+" : "")}</a>
+            </span><br/><span className="descriptor">Distinct Tags</span>
           </li>
         </ul>
 
@@ -196,6 +211,13 @@ class Stats extends Component {
           onRequestClose={::this.closeContributorsModal}
           style={modalStyles}
           contributors={contributors}
+        />
+        <SubTagsModal
+          isOpen={this.state.subTagsModalOpen}
+          onRequestClose={::this.closeSubTagsModal}
+          style={modalStyles}
+          tagKey = {features.length > 0 && this.props.layers.find(f => f.name === features[0].filter).filter.tagKey}
+          subTags={subTags}
         />
 
         <Histogram key={this.props.mode||'recency'} mode={this.props.mode||'recency'} data={
@@ -254,6 +276,12 @@ class Stats extends Component {
   }
   closeContributorsModal() {
     this.setState({ contributorsModalOpen: false })
+  }
+  openSubTagsModal() {
+    this.setState({ subTagsModalOpen: true })
+  }
+  closeSubTagsModal() {
+    this.setState({ subTagsModalOpen: false })
   }
 
   enableCompareView() {

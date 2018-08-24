@@ -108,7 +108,7 @@ ul.hot-projects {
   }
 }
 
-ul.contributors {
+ul.contributors, ul.subTags {
   list-style-type: none;
   padding: 0;
   margin: 0;
